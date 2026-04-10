@@ -11,7 +11,11 @@
 # Path to your expo-ship installation
 EXPO_SHIP ?= $(HOME)/expo-ship
 
-.PHONY: build check test smoke clean help
+.PHONY: build sim check test smoke clean help
+
+## TypeScript check + build + launch in iOS Simulator (run this before make build)
+sim:
+	@bash $(EXPO_SHIP)/scripts/sim.sh
 
 ## Full pipeline: pre-flight → smoke test → build → submit to TestFlight
 build: check smoke
@@ -38,11 +42,14 @@ help:
 	@echo ""
 	@echo "$$(source ship.config.sh 2>/dev/null && echo "$$APP_NAME") Build System"
 	@echo "────────────────────────────────────────"
-	@echo "  make build    Full pipeline (use this)"
+	@echo "  make sim      Build + run in iOS Simulator"
+	@echo "  make build    Full pipeline (TestFlight)"
 	@echo "  make check    Pre-flight checks only"
 	@echo "  make test     API unit tests only"
 	@echo "  make smoke    Production API health check"
 	@echo "  make clean    Delete local build artifacts"
+	@echo ""
+	@echo "  Tip: make sim DEVICE=\"iPhone 16 Pro\""
 	@echo ""
 
 .DEFAULT_GOAL := help
