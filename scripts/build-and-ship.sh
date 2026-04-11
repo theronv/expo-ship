@@ -50,16 +50,22 @@ echo ""
 echo -e "  ${YELLOW}This takes 20–40 minutes. Go get a coffee. ☕${NC}"
 echo ""
 
+# Disable errexit for the build step: eas-cli-local-build-plugin sometimes
+# exits non-zero during temp-dir cleanup (ENOTEMPTY on .git) even when the
+# .ipa was produced successfully. The IPA existence check below is the
+# authoritative success signal.
+set +e
 npx eas build \
   --profile "$BUILD_PROFILE" \
   --platform ios \
   --local \
   --output "$IPA_PATH"
+set -e
 
 if [ ! -f "$IPA_PATH" ]; then
   echo ""
-  echo -e "${RED}${BOLD}❌ Build finished but .ipa not found at $IPA_PATH${NC}"
-  echo -e "${YELLOW}Check the EAS build output above for the actual file path.${NC}"
+  echo -e "${RED}${BOLD}❌ Build failed — .ipa not found at $IPA_PATH${NC}"
+  echo -e "${YELLOW}Check the EAS build output above for details.${NC}"
   exit 1
 fi
 
