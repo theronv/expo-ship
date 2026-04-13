@@ -13,26 +13,14 @@
 
 set -euo pipefail
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-NC='\033[0m'
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_common.sh
+source "$SCRIPT_DIR/_common.sh"
 
-pass()   { echo -e "  ${GREEN}✅ $1${NC}"; }
-fail()   { echo -e "  ${RED}❌ $1${NC}"; exit 1; }
-info()   { echo -e "  ${BLUE}→  $1${NC}"; }
-header() { echo -e "\n${BOLD}${BLUE}── $1 ──────────────────────────────────────────────${NC}"; }
+fail() { echo -e "  ${RED}❌ $1${NC}"; exit 1; }
 
 # ─── Load config ─────────────────────────────────────────────────────────────
-CONFIG="$(pwd)/ship.config.sh"
-if [ ! -f "$CONFIG" ]; then
-  echo -e "${RED}❌ ship.config.sh not found in $(pwd)${NC}"
-  exit 1
-fi
-# shellcheck source=/dev/null
-source "$CONFIG"
+load_config
 
 # Optional: device passed as env var (from Makefile: make sim DEVICE="iPhone 16 Pro")
 SIMULATOR_DEVICE="${DEVICE:-}"

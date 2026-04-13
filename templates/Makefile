@@ -2,16 +2,19 @@
 # https://github.com/theronvickery/expo-ship (or wherever you keep it)
 #
 # USAGE
-#   make build    ← the only command you need
+#   make build    ← the only command you need for TestFlight
+#   make sim      ← TypeScript check + build + launch in iOS Simulator
 #   make check    ← fast pre-flight checks (~60s, no build)
-#   make smoke    ← ping production API
 #   make test     ← run API unit tests
+#   make smoke    ← ping production API
+#   make last     ← show recent build history
+#   make open     ← open build-output/ in Finder
 #   make clean    ← delete local build artifacts
 
 # Path to your expo-ship installation
 EXPO_SHIP ?= $(HOME)/expo-ship
 
-.PHONY: build sim check test smoke clean help
+.PHONY: build sim check test smoke last open clean help
 
 ## TypeScript check + build + launch in iOS Simulator (run this before make build)
 sim:
@@ -27,11 +30,25 @@ check:
 
 ## API unit tests
 test:
-	@bash -c "$$(source ship.config.sh 2>/dev/null && echo "$$API_TEST_CMD")"
+	@bash $(EXPO_SHIP)/scripts/test.sh
 
 ## Production API health check
 smoke:
 	@bash $(EXPO_SHIP)/scripts/smoke-test.sh
+
+## Show recent build history
+last:
+	@if [ -f build-output/builds.log ]; then \
+		echo ""; \
+		tail -10 build-output/builds.log; \
+		echo ""; \
+	else \
+		echo "No builds recorded yet — run make build first."; \
+	fi
+
+## Open build-output/ in Finder
+open:
+	@open build-output/ 2>/dev/null || echo "build-output/ does not exist — run make build first."
 
 ## Delete local build artifacts
 clean:
@@ -47,6 +64,8 @@ help:
 	@echo "  make check    Pre-flight checks only"
 	@echo "  make test     API unit tests only"
 	@echo "  make smoke    Production API health check"
+	@echo "  make last     Show recent build history"
+	@echo "  make open     Open build-output/ in Finder"
 	@echo "  make clean    Delete local build artifacts"
 	@echo ""
 	@echo "  Tip: make sim DEVICE=\"iPhone 16 Pro\""

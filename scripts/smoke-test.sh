@@ -5,29 +5,16 @@
 
 set -euo pipefail
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-NC='\033[0m'
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_common.sh
+source "$SCRIPT_DIR/_common.sh"
+
+fail() { echo -e "  ${RED}❌ $1${NC}"; FAILURES=$((FAILURES + 1)); }
 
 FAILURES=0
 
-pass()   { echo -e "  ${GREEN}✅ $1${NC}"; }
-fail()   { echo -e "  ${RED}❌ $1${NC}"; FAILURES=$((FAILURES + 1)); }
-warn()   { echo -e "  ${YELLOW}⚠️  $1${NC}"; }
-info()   { echo -e "  ${BLUE}→  $1${NC}"; }
-header() { echo -e "\n${BOLD}${BLUE}── $1 ──────────────────────────────────────────────${NC}"; }
-
 # ─── Load config ─────────────────────────────────────────────────────────────
-CONFIG="$(pwd)/ship.config.sh"
-if [ ! -f "$CONFIG" ]; then
-  echo -e "${RED}❌ ship.config.sh not found in $(pwd)${NC}"
-  exit 1
-fi
-# shellcheck source=/dev/null
-source "$CONFIG"
+load_config
 
 # Skip if not configured
 if [ -z "${SMOKE_TEST_URL:-}" ]; then
@@ -92,7 +79,7 @@ if python3 -c "exit(0 if float('$TIME_TOTAL') < 10 else 1)" 2>/dev/null; then
     warn "Slow response: ${TIME_MS}ms (cold start?) — continuing"
   fi
 else
-  fail "Response time: ${TIME_MS}ms — exceeded 10s timeout"
+  fail "Response time: ${TIME_MS}ms — exceeded 10s threshold"
 fi
 
 # ─── Headers ─────────────────────────────────────────────────────────────────

@@ -5,14 +5,13 @@
 
 set -euo pipefail
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-NC='\033[0m'
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_common.sh
+source "$SCRIPT_DIR/_common.sh"
 
-header() {
+fail() { echo -e "  ${RED}❌ $1${NC}"; exit 1; }
+
+big_header() {
   echo ""
   echo -e "${BOLD}${BLUE}════════════════════════════════════════════════════${NC}"
   echo -e "${BOLD}${BLUE}  $1${NC}"
@@ -20,13 +19,7 @@ header() {
 }
 
 # ─── Load config ─────────────────────────────────────────────────────────────
-CONFIG="$(pwd)/ship.config.sh"
-if [ ! -f "$CONFIG" ]; then
-  echo -e "${RED}❌ ship.config.sh not found in $(pwd)${NC}"
-  exit 1
-fi
-# shellcheck source=/dev/null
-source "$CONFIG"
+load_config
 
 BUILD_PROFILE="${BUILD_PROFILE:-preview}"
 SUBMIT_PROFILE="${SUBMIT_PROFILE:-production}"
@@ -39,7 +32,7 @@ IPA_PATH="$BUILD_DIR/${APP_LABEL// /-}-$TIMESTAMP.ipa"
 mkdir -p "$BUILD_DIR"
 
 # ─── Build ────────────────────────────────────────────────────────────────────
-header "Step 1 of 2 — Building .ipa (local)"
+big_header "Step 1 of 2 — Building .ipa (local)"
 
 echo ""
 echo -e "  App     : ${BLUE}$APP_LABEL${NC}"
@@ -74,7 +67,7 @@ echo ""
 echo -e "${GREEN}${BOLD}  ✅  Build complete! ($IPA_SIZE)${NC}"
 
 # ─── Submit ───────────────────────────────────────────────────────────────────
-header "Step 2 of 2 — Submitting to TestFlight"
+big_header "Step 2 of 2 — Submitting to TestFlight"
 
 echo ""
 echo -e "  Submit profile : $SUBMIT_PROFILE"
@@ -87,6 +80,21 @@ npx eas submit \
   --platform ios \
   --path "$IPA_PATH" \
   --profile "$SUBMIT_PROFILE"
+
+# ─── Build log ────────────────────────────────────────────────────────────────
+GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+APP_VERSION=$(python3 -c "
+import json, sys
+try:
+    with open('app.json') as f:
+        d = json.load(f)
+    print(d.get('expo', d).get('version', 'unknown'))
+except Exception:
+    print('unknown')
+" 2>/dev/null || echo "unknown")
+
+LOG_LINE="$(date '+%Y-%m-%d %H:%M:%S')  ${APP_LABEL}  v${APP_VERSION}  git:${GIT_SHA}  profile:${BUILD_PROFILE}  ipa:$(basename "$IPA_PATH")"
+echo "$LOG_LINE" >> "$BUILD_DIR/builds.log"
 
 # ─── Done ─────────────────────────────────────────────────────────────────────
 echo ""
@@ -107,5 +115,6 @@ if [ ${#POST_BUILD_CHECKLIST[@]:-0} -gt 0 ]; then
   echo ""
 fi
 
-echo -e "  Build artifact: $IPA_PATH"
+echo -e "  Build artifact : $IPA_PATH"
+echo -e "  Build history  : $BUILD_DIR/builds.log"
 echo ""
