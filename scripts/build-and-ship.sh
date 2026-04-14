@@ -69,17 +69,49 @@ echo -e "${GREEN}${BOLD}  ✅  Build complete! ($IPA_SIZE)${NC}"
 # ─── Submit ───────────────────────────────────────────────────────────────────
 big_header "Step 2 of 2 — Submitting to TestFlight"
 
+# Validate required submit config
+if [ -z "${APPLE_ID:-}" ]; then
+  fail "APPLE_ID is not set in ship.config.sh"
+fi
+if [ -z "${KEYCHAIN_ITEM:-}" ]; then
+  fail "KEYCHAIN_ITEM is not set in ship.config.sh
+       Store your app-specific password first:
+         xcrun altool --store-password-in-keychain-item \"${KEYCHAIN_ITEM:-altool}\" \\
+           --username \"${APPLE_ID:-your@apple.id}\" --password \"xxxx-xxxx-xxxx-xxxx\""
+fi
+
+# Verify the keychain item exists before attempting upload
+if ! security find-generic-password -a "$APPLE_ID" -s "$KEYCHAIN_ITEM" &>/dev/null; then
+  fail "Keychain item \"$KEYCHAIN_ITEM\" not found for $APPLE_ID
+       Store your app-specific password first:
+         xcrun altool --store-password-in-keychain-item \"$KEYCHAIN_ITEM\" \\
+           --username \"$APPLE_ID\" --password \"xxxx-xxxx-xxxx-xxxx\""
+fi
+
 echo ""
-echo -e "  Submit profile : $SUBMIT_PROFILE"
-echo -e "  File           : $IPA_PATH"
+echo -e "  Apple ID : ${BLUE}$APPLE_ID${NC}"
+echo -e "  File     : ${BLUE}$IPA_PATH${NC}"
 echo ""
-echo -e "  ${BLUE}Uploading to Apple... (usually 2–5 minutes)${NC}"
+echo -e "  ${BLUE}Uploading directly to Apple (no cloud queue)...${NC}"
 echo ""
 
-npx eas submit \
-  --platform ios \
-  --path "$IPA_PATH" \
-  --profile "$SUBMIT_PROFILE"
+ALTOOL_OUT=$(mktemp)
+xcrun altool --upload-app \
+  --type ios \
+  --file "$IPA_PATH" \
+  --username "$APPLE_ID" \
+  --password "@keychain:$KEYCHAIN_ITEM" \
+  --output-format xml > "$ALTOOL_OUT" 2>&1
+ALTOOL_EXIT=$?
+
+# Print output, suppressing blank lines
+grep -v "^$" "$ALTOOL_OUT" || true
+
+if [ $ALTOOL_EXIT -ne 0 ]; then
+  rm -f "$ALTOOL_OUT"
+  fail "altool upload failed — see errors above."
+fi
+rm -f "$ALTOOL_OUT"
 
 # ─── Build log ────────────────────────────────────────────────────────────────
 GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
